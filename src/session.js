@@ -115,11 +115,13 @@ ghostdriver.Session = function(desiredCapabilities) {
     _capsPageSettingsPref = "phantomjs.page.settings.",
     _capsPageCustomHeadersPref = "phantomjs.page.customHeaders.",
     _capsPageZoomFactor = "phantomjs.page.zoomFactor",
-    _capsPageOnInitializedJsInject = "phantomjs.page.onInitialized.jsInject",   // NICO_EDIT INJECT Step 1a: dcap key name.
+    _capsPageOnInitializedJsInject = "phantomjs.page.onInitialized.jsInject",
+    _capsPageViewportSizePref = "phantomjs.page.viewportSize.",
     _capsPageSettingsProxyPref = "proxy",
     _pageSettings = {},
     _pageZoomFactor = 1,
-    _pageOnInitializedJsInjectCode = "",    // NICO_EDIT INJECT Step 1b: Variable to save the code.
+    _pageOnInitializedJsInjectCode = "",
+    _pageViewportSize = {}, 
     _additionalPageSettings = {
         resourceTimeout: null,
         userName: null,
@@ -127,7 +129,7 @@ ghostdriver.Session = function(desiredCapabilities) {
     },
     _pageCustomHeaders = {},
     _log = ghostdriver.logger.create("Session [" + _id + "]"),
-    k, settingKey, headerKey, proxySettings;
+    k, settingKey, headerKey, proxySettings, viewportSizeKey;
 
     var
     /**
@@ -152,7 +154,7 @@ ghostdriver.Session = function(desiredCapabilities) {
         return proxySettings;
     };
 
-    // Searching for `phantomjs.settings.* and phantomjs.customHeaders.* phantomjs.page.zoomFactor` in the Desired Capabilities and merging with the Negotiated Capabilities
+    // Searching for `phantomjs.page.settings.* and phantomjs.page.customHeaders.* phantomjs.page.zoomFactor` in the Desired Capabilities and merging with the Negotiated Capabilities
     // Possible values for settings: @see http://phantomjs.org/api/webpage/property/settings.html.
     // Possible values for customHeaders: @see http://phantomjs.org/api/webpage/property/custom-headers.html.
     for (k in desiredCapabilities) {
@@ -170,11 +172,24 @@ ghostdriver.Session = function(desiredCapabilities) {
                 _pageCustomHeaders[headerKey] = desiredCapabilities[k];
             }
         }
-        // NICO_EDIT INJECT Step 2: Save the inject code.
+        // If dcap is `phantomjs.page.onInitialized.jsInject`
         if (k.indexOf(_capsPageOnInitializedJsInject) === 0) {
             _negotiatedCapabilities[k] = desiredCapabilities[k];
             _pageOnInitializedJsInjectCode = desiredCapabilities[k];
         }
+        // If dcap is `phantomjs.page.viewportSize.*`
+        if (k.indexOf(_capsPageViewportSizePref) === 0) {
+            viewportSizeKey = k.substring(_capsPageViewportSizePref.length);
+            // Check if the
+            if (viewportSizeKey === "height" || 
+                viewportSizeKey === "width") {
+
+                _negotiatedCapabilities[k] = desiredCapabilities[k];
+                _pageViewportSize[viewportSizeKey] = desiredCapabilities[k];
+
+            }
+        }
+        // If dcap is `phantomjs.page.zoomFactor`
         if (k.indexOf(_capsPageZoomFactor) === 0){
             _negotiatedCapabilities[k] = desiredCapabilities[k];
             _pageZoomFactor = desiredCapabilities[k];
@@ -482,7 +497,6 @@ ghostdriver.Session = function(desiredCapabilities) {
             }
         };
 
-        // NICO_EDIT: INJECT Step 3
         // 12. Register onInitialized and inject javascript code that is passed by cap.
         if (_pageOnInitializedJsInjectCode !== "") {
 
@@ -494,6 +508,14 @@ ghostdriver.Session = function(desiredCapabilities) {
 
             _log.info("page.onInitialized.jsInject: ", _pageOnInitializedJsInjectCode);
         
+        }
+
+        // 13. Set viewportSize if it was passed via desiredCapabilities.        
+        if ("height" in _pageViewportSize && "width" in _pageViewportSize) {
+
+            page.viewportSize = _pageViewportSize;
+
+            _log.info("page.viewportSize", JSON.stringify(page.viewportSize));
         }
 
         _log.info("page.settings", JSON.stringify(page.settings));
