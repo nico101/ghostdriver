@@ -115,9 +115,11 @@ ghostdriver.Session = function(desiredCapabilities) {
     _capsPageSettingsPref = "phantomjs.page.settings.",
     _capsPageCustomHeadersPref = "phantomjs.page.customHeaders.",
     _capsPageZoomFactor = "phantomjs.page.zoomFactor",
+    _capsPageOnInitializedJsInject = "phantomjs.page.onInitialized.jsInject",   // NICO_EDIT INJECT Step 1a: dcap key name.
     _capsPageSettingsProxyPref = "proxy",
     _pageSettings = {},
     _pageZoomFactor = 1,
+    _pageOnInitializedJsInjectCode = "",    // NICO_EDIT INJECT Step 1b: Variable to save the code.
     _additionalPageSettings = {
         resourceTimeout: null,
         userName: null,
@@ -167,6 +169,11 @@ ghostdriver.Session = function(desiredCapabilities) {
                 _negotiatedCapabilities[k] = desiredCapabilities[k];
                 _pageCustomHeaders[headerKey] = desiredCapabilities[k];
             }
+        }
+        // NICO_EDIT INJECT Step 2: Save the inject code.
+        if (k.indexOf(_capsPageOnInitializedJsInject) === 0) {
+            _negotiatedCapabilities[k] = desiredCapabilities[k];
+            _pageOnInitializedJsInjectCode = desiredCapabilities[k];
         }
         if (k.indexOf(_capsPageZoomFactor) === 0){
             _negotiatedCapabilities[k] = desiredCapabilities[k];
@@ -474,6 +481,20 @@ ghostdriver.Session = function(desiredCapabilities) {
                 _clearPageLog(page);
             }
         };
+
+        // NICO_EDIT: INJECT Step 3
+        // 12. Register onInitialized and inject javascript code that is passed by cap.
+        if (_pageOnInitializedJsInjectCode !== "") {
+
+            var eval_jsInject_code = "page.evaluate(function() { " + _pageOnInitializedJsInjectCode + " });";
+
+            page.onInitialized = function() {
+                eval(eval_jsInject_code);
+            };
+
+            _log.info("page.onInitialized.jsInject: ", _pageOnInitializedJsInjectCode);
+        
+        }
 
         _log.info("page.settings", JSON.stringify(page.settings));
         _log.info("page.customHeaders: ", JSON.stringify(page.customHeaders));
